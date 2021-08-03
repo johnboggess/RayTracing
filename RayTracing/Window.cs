@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 using ObjectTK.Textures;
 using ObjectTK.Buffers;
@@ -35,6 +36,7 @@ namespace RayTracing
         Camera Camera = new Camera(1f, 16f / 9f, 1);
         float speed = .1f;
         Vector2 lastMousePosition = Vector2.Zero;
+        Stopwatch stopwatch = new Stopwatch();
 
         public Window(int height, float aspectRatio, string title) : base(GameWindowSettings.Default, new NativeWindowSettings() { Size = new Vector2i((int)(height * aspectRatio), height), Title = title } )
         {
@@ -60,8 +62,6 @@ namespace RayTracing
             RayTracerOut.SetFilter(TextureMinFilter.Nearest, TextureMagFilter.Nearest);
             Background.Bind(TextureUnit.Texture1);
 
-            //_rayTracerShader = new Shader(10, 10, Size.X, Size.Y, this);
-            //_rayTracerShader.Initialize();
             ProgramFactory.BasePath = "";
 
             RayTracer = ProgramFactory.Create<RayTracer>();
@@ -129,7 +129,8 @@ namespace RayTracing
             toWorld.Transpose();
             RayTracer.ToWorldSpace.Set(toWorld);
             RayTracer.CameraPos.Set(Camera.Transform.Position);
-            RayTracer.Dispatch(Size.X / 10, Size.Y / 10, 1);
+
+            RayTracer.Dispatch(Size.X / 32, Size.Y / 32, 1);
         }
 
         protected override void OnRenderFrame(FrameEventArgs e)
@@ -139,6 +140,8 @@ namespace RayTracing
             _vertexArray.DrawElements(PrimitiveType.Triangles, 6);
             //_rayTracerShader.Draw();
             SwapBuffers();
+
+            Console.WriteLine(1.0/e.Time);
         }
     }
 }
