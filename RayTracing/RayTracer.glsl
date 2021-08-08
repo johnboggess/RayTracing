@@ -30,6 +30,8 @@ uniform writeonly image2D destTex;
 
 layout (binding=1, rgba8)
 uniform image2D backgroundTex;
+layout (binding=2, rgba8)
+uniform image2D Noise;
 
 uniform mat4 ToWorldSpace;
 uniform vec3 CameraPos;
@@ -40,6 +42,9 @@ uniform int BackgroundHeight;
 uniform int WindowWidth;
 uniform int WindowHeight;
 
+
+int RandomOffset = 0;
+int RandomChannelOffset = 0;
 Sphere[3] spheres = Sphere[3]
 (
 	Sphere(vec3(0,0,1), .5, vec3(1,.8,.8), 0),
@@ -49,19 +54,25 @@ Sphere[3] spheres = Sphere[3]
 
 layout (local_size_x = 32, local_size_y = 32) in;
 
-float rand(vec2 co){
-    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+float rand()
+{
+	ivec2 screenPos = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 noiseSize = imageSize(Noise);
+	screenPos.x = int(mod(screenPos.x+RandomOffset, noiseSize.x));
+	screenPos.y = int(mod(screenPos.y+RandomOffset, noiseSize.y));
+
+	vec4 c = imageLoad(Noise, screenPos);
+	float result = c[RandomChannelOffset];
+	
+	RandomChannelOffset = RandomChannelOffset+1;
+	RandomOffset += 1;
+	RandomChannelOffset = int(mod(RandomChannelOffset, 4));
+	return result;
 }
 
 vec3 random_in_unit_sphere(float rndOffset)
 {
-	ivec2 screenPos = ivec2(gl_GlobalInvocationID.xy);
-	vec2 floatScreenPos = vec2(screenPos);
-	vec2 UV = floatScreenPos/vec2(WindowWidth, WindowHeight);
-	float theta = rand(UV+rndOffset) * PI;
-	float phi = rand(UV+.02+rndOffset) * PI;
-
-	return vec3(sin(phi) * cos(theta),sin(phi) * sin(theta),cos(phi));
+	return normalize(vec3(rand()*2.0 - 1.0,rand()*2.0 - 1.0,rand()*2.0 - 1.0));
 }
 
 float HitSphere(Sphere sphere, Ray r)
@@ -155,7 +166,7 @@ void main()
 {
 	ivec2 screenPos = ivec2(gl_GlobalInvocationID.xy);
 	
-	int raysPerPxl = 1;
+	int raysPerPxl = 2;
 
 	vec3 resultColor = vec3(0,0,0);
 
@@ -164,11 +175,8 @@ void main()
 		vec2 floatScreenPos = vec2(screenPos);
 		vec2 UV = floatScreenPos/vec2(WindowWidth, WindowHeight);
 		vec2 offset;
-		offset.x = rand(UV+vec2(i));
-		offset.y = rand(UV+vec2(i)+vec2(.01));
-
-		offset.x = (offset.x+1.0)/2.0;
-		offset.y = (offset.y+1.0)/2.0;
+		offset.x = rand();
+		offset.y = rand();
 
 		floatScreenPos += offset;
 
@@ -176,7 +184,7 @@ void main()
 		Ray ray = Ray(CameraPos, WSpos-CameraPos, vec3(1,1,1));
 		resultColor += RayTrace(ray, vec3(1,1,1), 1, 5);
 	}
-	
 	resultColor = resultColor/raysPerPxl;
+
 	imageStore(destTex, screenPos, vec4(resultColor,0.0));
 }

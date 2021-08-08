@@ -15,6 +15,7 @@ namespace RayTracing
     {
         public ImageUniform destTex { get; set; }
         public ImageUniform backgroundTex { get; set; }
+        public ImageUniform Noise { get; set; }
         public Uniform<Matrix4> ToWorldSpace { get; set; }
         public Uniform<Vector3> CameraPos { get; set; }
         public Uniform<float> ViewPortWidth { get; set; }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 using ObjectTK.Textures;
 using ObjectTK.Buffers;
@@ -29,6 +30,7 @@ namespace RayTracing
         RayTracer RayTracer;
         RenderProgram RenderProgram;
         Texture2D Background;
+        Texture2D Noise;
         Texture2D RayTracerOut;
 
         VertexArray _vertexArray;
@@ -37,6 +39,7 @@ namespace RayTracing
         float speed = .1f;
         Vector2 lastMousePosition = Vector2.Zero;
         Stopwatch stopwatch = new Stopwatch();
+        Random random = new Random();
 
         public Window(int height, float aspectRatio, string title) : base(GameWindowSettings.Default, new NativeWindowSettings() { Size = new Vector2i((int)(height * aspectRatio), height), Title = title } )
         {
@@ -54,6 +57,20 @@ namespace RayTracing
             RayTracerOut.SetFilter(TextureMinFilter.Nearest, TextureMagFilter.Nearest);
             RayTracerOut.Bind(TextureUnit.Texture0);
 
+            int noiseWidth = 101;//texture shouldnt be square. This will allow the shader to easly sample every pixel
+            int noiseHeight = 100;
+            byte[] noiseBytes = new byte[noiseWidth * noiseHeight * 4];
+            random.NextBytes(noiseBytes);
+            GCHandle handle = GCHandle.Alloc(noiseBytes, GCHandleType.Pinned);
+            IntPtr noisePtr = handle.AddrOfPinnedObject();
+            Bitmap bmp = new Bitmap(noiseWidth, noiseHeight, noiseWidth * 4, System.Drawing.Imaging.PixelFormat.Format32bppArgb, noisePtr);
+            handle.Free();
+            bmp.Save("Noise.bmp");
+            BitmapTexture.CreateCompatible(bmp, out Noise);
+            Noise.LoadBitmap(bmp);
+            bmp.Dispose();
+            Noise.Bind(TextureUnit.Texture2);
+
             Bitmap bckgrnd = new Bitmap("Background.png");
             bckgrnd.RotateFlip(RotateFlipType.RotateNoneFlipY);
             BitmapTexture.CreateCompatible(bckgrnd, out Background);
@@ -68,6 +85,7 @@ namespace RayTracing
             RayTracer.Use();
             RayTracer.destTex.Bind(0, RayTracerOut, TextureAccess.WriteOnly);
             RayTracer.backgroundTex.Bind(1, Background, TextureAccess.ReadOnly);
+            RayTracer.Noise.Bind(2, Noise, TextureAccess.ReadOnly);
             RayTracer.BackgroundWidth.Set(4096);
             RayTracer.BackgroundHeight.Set(2048);
             RayTracer.WindowWidth.Set(Size.X);
